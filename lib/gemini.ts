@@ -11,7 +11,11 @@ async function callGemini(prompt: string): Promise<string> {
     try {
         const { GoogleGenerativeAI } = await import("@google/generative-ai");
         const genAI = new GoogleGenerativeAI(API_KEY);
-        const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+
+        const models = await genAI.listModels();
+        console.log("AVAILABLE MODELS:", models);
+
+        const model = genAI.getGenerativeModel({ model: "gemini-pro" });
         const result = await model.generateContent(prompt);
         return result.response.text();
     } catch (e) {
@@ -86,3 +90,4 @@ export async function processAIChat(
         return { reply: await callGemini(`ユーザーへの返答を日本語で: ${userMessage}`) };
     }
 }
+
