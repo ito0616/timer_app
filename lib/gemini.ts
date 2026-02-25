@@ -11,10 +11,6 @@ async function callGemini(prompt: string): Promise<string> {
     try {
         const { GoogleGenerativeAI } = await import("@google/generative-ai");
         const genAI = new GoogleGenerativeAI(API_KEY);
-
-        const models = await genAI.listModels();
-        console.log("AVAILABLE MODELS:", models);
-
         const model = genAI.getGenerativeModel({ model: "gemini-pro" });
         const result = await model.generateContent(prompt);
         return result.response.text();
