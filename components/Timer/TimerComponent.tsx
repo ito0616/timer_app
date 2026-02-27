@@ -35,19 +35,35 @@ export default function TimerComponent() {
         if (intervalRef.current) clearInterval(intervalRef.current);
     };
 
+    // handleComplete を ref で保持することで、useEffect の依存配列に含めず
+    // タイマーのリセット・二重呼び出しを防ぐ
+    const handleCompleteRef = useRef<() => void>(() => { });
+
     const handleComplete = useCallback(async () => {
         clearTimer();
         setRunning(false);
         setDone(true);
         setPhase("done");
+
+        // アラーム音を鳴らす (public/alarm.mp3 がある前提、なければエラーを無視)
+        try {
+            const audio = new Audio("/Kitchen_Timer03-01(Alarm).mp3");
+            audio.play();
+        } catch (e) {
+            console.error("Alarm sound error:", e);
+        }
+
         const mins = Math.round(totalSeconds / 60);
+        // 10分ごとに1個の報酬 (最低でも1個はもらえるように設定)
+        const rewardCount = Math.max(1, Math.floor(mins / 10));
+
         addSession({
             id: crypto.randomUUID(),
             title: title || "集中セッション",
             genre,
             durationMinutes: mins,
             completedAt: new Date().toISOString(),
-            reward: 1,
+            reward: rewardCount,
         });
         setLoadingAI(true);
         const msg = await generateTimerComplete(title || "集中セッション", genre, mins);
@@ -55,12 +71,18 @@ export default function TimerComponent() {
         setLoadingAI(false);
     }, [totalSeconds, title, genre, addSession]);
 
+    // 最新の handleComplete を常に ref に同期
+    useEffect(() => {
+        handleCompleteRef.current = handleComplete;
+    }, [handleComplete]);
+
     useEffect(() => {
         if (running) {
             intervalRef.current = setInterval(() => {
                 setRemaining((prev) => {
                     if (prev <= 1) {
-                        handleComplete();
+                        // ref 経由で呼ぶことでこの useEffect の依存に handleComplete を含めない
+                        handleCompleteRef.current();
                         return 0;
                     }
                     return prev - 1;
@@ -70,7 +92,8 @@ export default function TimerComponent() {
             clearTimer();
         }
         return clearTimer;
-    }, [running, handleComplete]);
+    }, [running]); // running だけに依存 → handleComplete の変化でタイマーがリセットされない
+
 
     function handleStart() {
         if (remaining === 0) return;
@@ -116,7 +139,7 @@ export default function TimerComponent() {
                     </label>
                     <input
                         className="app-input text-base"
-                        placeholder="例: 英語の単語帳50個"
+                        placeholder={"例: 英語の単語帳50個"}
                         value={title}
                         onChange={(e) => setTitle(e.target.value)}
                     />
@@ -264,16 +287,23 @@ export default function TimerComponent() {
             {/* AI message on complete */}
             {done && (
                 <div
-                    className="glass p-5 w-full text-center animate-popIn"
+                    className="glass p-5 w-full text-center animate-popIn flex flex-col gap-3"
                     style={{ border: "1px solid rgba(192,132,252,0.35)" }}
                 >
+                    <div className="flex flex-col items-center gap-1">
+                        <span className="text-2xl">🎁</span>
+                        <span className="text-lg font-black text-pink-400">
+                            報酬を {Math.max(1, Math.floor(totalSeconds / 60 / 10))} 個ゲット！
+                        </span>
+                    </div>
+
                     {loadingAI ? (
-                        <div className="flex items-center justify-center gap-2 text-sm" style={{ color: "var(--text-muted)" }}>
+                        <div className="flex items-center justify-center gap-2 text-sm py-4" style={{ color: "var(--text-muted)" }}>
                             <div className="w-4 h-4 rounded-full border-2 border-purple-400 border-t-transparent animate-spin" />
                             AIメッセージを生成中...
                         </div>
                     ) : (
-                        <p className="text-sm leading-relaxed whitespace-pre-line">{aiMessage}</p>
+                        <p className="text-sm leading-relaxed whitespace-pre-line border-t border-white/5 pt-3">{aiMessage}</p>
                     )}
                 </div>
             )}

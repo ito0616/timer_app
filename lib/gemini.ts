@@ -1,21 +1,81 @@
-const API_KEY = process.env.NEXT_PUBLIC_GEMINI_API_KEY || "";
+/**
+ * クライアントサイドからGemini APIを呼び出すためのユーティリティ。
+ * APIキーはサーバー側の /api/gemini Route Handler でのみ使用されるため安全です。
+ * ローカルストレージへのキャッシュにより、同じ内容のAPIリクエストを節約します。
+ */
 
-interface GeminiResponse {
-    text: string;
+// キャッシュの有効期限（24時間）
+const CACHE_TTL = 24 * 60 * 60 * 1000;
+
+/** プロンプト文字列を短いキーに変換 */
+function makeCacheKey(prompt: string): string {
+    // btoa は ASCII のみなので encodeURIComponent でエスケープ
+    try {
+        return "gemini_" + btoa(encodeURIComponent(prompt).slice(0, 200));
+    } catch {
+        return "gemini_" + prompt.slice(0, 80).replace(/\s+/g, "_");
+    }
+}
+
+/** キャッシュから取得（期限切れは自動削除） */
+function getCache(key: string): string | null {
+    if (typeof window === "undefined") return null;
+    try {
+        const raw = localStorage.getItem(key);
+        if (!raw) return null;
+        const { text, timestamp } = JSON.parse(raw) as { text: string; timestamp: number };
+        if (Date.now() - timestamp > CACHE_TTL) {
+            localStorage.removeItem(key);
+            return null;
+        }
+        return text;
+    } catch {
+        return null;
+    }
+}
+
+/** キャッシュに保存 */
+function setCache(key: string, text: string): void {
+    if (typeof window === "undefined") return;
+    try {
+        localStorage.setItem(key, JSON.stringify({ text, timestamp: Date.now() }));
+    } catch {
+        // ストレージ容量超過などは無視
+    }
 }
 
 async function callGemini(prompt: string): Promise<string> {
-    if (!API_KEY) {
-        return "（AIキーが設定されていないため、AIメッセージは表示できません）";
+    const cacheKey = makeCacheKey(prompt);
+
+    // キャッシュヒットならAPIを呼ばずに返す
+    const cached = getCache(cacheKey);
+    if (cached) {
+        console.log("[Gemini] キャッシュから返却");
+        return cached;
     }
+
     try {
-        const { GoogleGenerativeAI } = await import("@google/generative-ai");
-        const genAI = new GoogleGenerativeAI(API_KEY);
-        const model = genAI.getGenerativeModel({ model: "gemini-pro" });
-        const result = await model.generateContent(prompt);
-        return result.response.text();
+        const res = await fetch("/api/gemini", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ prompt }),
+        });
+
+        if (!res.ok) {
+            const body = await res.json();
+            console.error(`Gemini API error [HTTP ${res.status}]:`, body.error);
+            return `AIとの通信でエラーが発生しました（${body.error ?? res.status}）`;
+        }
+
+        const { text } = await res.json();
+        const result = text ?? "";
+
+        // 正常なレスポンスのみキャッシュに保存
+        if (result) setCache(cacheKey, result);
+
+        return result;
     } catch (e) {
-        console.error("Gemini error:", e);
+        console.error("Gemini fetch error:", e);
         return "AIとの通信でエラーが発生しました。";
     }
 }
@@ -70,13 +130,6 @@ export async function processAIChat(
 
 必ずJSONのみを返してください。余計なテキストは不要です。`;
 
-    if (!API_KEY) {
-        return {
-            reply:
-                "AIキーが設定されていません。.env.localにNEXT_PUBLIC_GEMINI_API_KEYを設定してください。",
-        };
-    }
-
     try {
         const raw = await callGemini(prompt);
         const cleaned = raw.replace(/```json|```/g, "").trim();
@@ -86,4 +139,3 @@ export async function processAIChat(
         return { reply: await callGemini(`ユーザーへの返答を日本語で: ${userMessage}`) };
     }
 }
-

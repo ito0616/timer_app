@@ -82,39 +82,54 @@ export default function MemoView() {
             )}
 
             {showAdd && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: "rgba(0,0,0,0.7)" }}>
-                    <div className="glass p-6 max-w-md w-full flex flex-col gap-4 animate-popIn">
-                        <div className="flex justify-between items-center">
-                            <h3 className="font-black text-lg gradient-text">メモを追加</h3>
-                            <button onClick={() => setShowAdd(false)}>
-                                <X size={18} />
+                /* 外側: 背景オーバーレイ（overflow-y:auto でキーボード時もスクロール可能） */
+                <div
+                    className="fixed inset-0 z-50"
+                    style={{ background: "rgba(0,0,0,0.7)", overflowY: "auto" }}
+                >
+                    {/* 内側: min-height:100% + flex で縦横中央揃え */}
+                    <div
+                        style={{
+                            minHeight: "100%",
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            padding: "1rem",
+                        }}
+                    >
+                        <div className="glass p-6 max-w-md w-full flex flex-col gap-4 animate-popIn">
+                            <div className="flex justify-between items-center">
+                                <h3 className="font-black text-lg gradient-text">メモを追加</h3>
+                                <button onClick={() => setShowAdd(false)}>
+                                    <X size={18} />
+                                </button>
+                            </div>
+
+                            <textarea
+                                className="app-input min-h-[120px] resize-y"
+                                placeholder="メモの内容"
+                                value={content}
+                                onChange={(e) => setContent(e.target.value)}
+                            />
+
+                            <div className="flex flex-col gap-1">
+                                <label className="text-xs font-bold" style={{ color: "var(--text-muted)" }}>タグ (任意)</label>
+                                <input
+                                    className="app-input"
+                                    placeholder="例: 課題, アイデア"
+                                    value={tag}
+                                    onChange={(e) => setTag(e.target.value)}
+                                />
+                            </div>
+
+                            <button
+                                onClick={handleAdd}
+                                disabled={!content.trim()}
+                                className="btn-primary w-full mt-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                                保存する
                             </button>
                         </div>
-
-                        <textarea
-                            className="app-input min-h-[120px] resize-y"
-                            placeholder="メモの内容"
-                            value={content}
-                            onChange={(e) => setContent(e.target.value)}
-                        />
-
-                        <div className="flex flex-col gap-1">
-                            <label className="text-xs font-bold" style={{ color: "var(--text-muted)" }}>タグ (任意)</label>
-                            <input
-                                className="app-input"
-                                placeholder="例: 課題, アイデア"
-                                value={tag}
-                                onChange={(e) => setTag(e.target.value)}
-                            />
-                        </div>
-
-                        <button
-                            onClick={handleAdd}
-                            disabled={!content.trim()}
-                            className="btn-primary w-full mt-2 disabled:opacity-50 disabled:cursor-not-allowed"
-                        >
-                            保存する
-                        </button>
                     </div>
                 </div>
             )}
