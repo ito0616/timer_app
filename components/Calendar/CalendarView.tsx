@@ -99,7 +99,7 @@ export default function CalendarView() {
                         </div>
                         <div className="flex flex-wrap gap-3">
                             {Object.entries(statsByGenre).length === 0 ? (
-                                <span className="opacity-40 font-normal">データがまだありません</span>
+                                <span className="opacity-40 font-normal">{"データがまだありません"}</span>
                             ) : (
                                 Object.entries(statsByGenre).map(([name, mins]) => (
                                     <div key={name} className="flex items-center gap-1.5">
