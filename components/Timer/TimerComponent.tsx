@@ -139,7 +139,7 @@ export default function TimerComponent() {
                     </label>
                     <input
                         className="app-input text-base"
-                        placeholder="例: 英語の単語帳50個"
+                        placeholder={"例: 英語の単語帳50個"}
                         value={title}
                         onChange={(e) => setTitle(e.target.value)}
                     />
