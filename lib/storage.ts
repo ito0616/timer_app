@@ -83,6 +83,31 @@ export function getTodaySessionMinutes(): number {
         .reduce((acc, s) => acc + s.durationMinutes, 0);
 }
 
+export function getStatsByGenre(): Record<string, number> {
+    const data = loadData();
+    const result: Record<string, number> = {};
+    for (const s of data.sessions) {
+        result[s.genre] = (result[s.genre] || 0) + s.durationMinutes;
+    }
+    return result;
+}
+
+export function getLast7DaysStats(): { date: string, minutes: number }[] {
+    const data = loadData();
+    const result = [];
+    const now = new Date();
+    for (let i = 6; i >= 0; i--) {
+        const d = new Date(now);
+        d.setDate(d.getDate() - i);
+        const dateStr = d.toISOString().slice(0, 10);
+        const minutes = data.sessions
+            .filter(s => s.completedAt.startsWith(dateStr))
+            .reduce((acc, s) => acc + s.durationMinutes, 0);
+        result.push({ date: dateStr.slice(5), minutes });
+    }
+    return result;
+}
+
 export function getSessionsByDate(): Record<string, number> {
     const data = loadData();
     const result: Record<string, number> = {};
@@ -96,7 +121,14 @@ export function getSessionsByDate(): Record<string, number> {
 export function getTodayRewards(): number {
     const data = loadData();
     const today = new Date().toISOString().slice(0, 10);
-    return data.sessions.filter((s) => s.completedAt.startsWith(today)).length;
+    return data.sessions
+        .filter((s) => s.completedAt.startsWith(today))
+        .reduce((acc, s) => acc + (s.reward || 0), 0);
+}
+
+export function getTotalRewards(): number {
+    const data = loadData();
+    return data.sessions.reduce((acc, s) => acc + (s.reward || 0), 0);
 }
 
 export function markTutorialDone(): void {

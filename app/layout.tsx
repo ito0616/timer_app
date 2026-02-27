@@ -23,7 +23,7 @@ export default function RootLayout({
         <AppProvider>
           <div className="flex min-h-screen">
             <Navigation />
-            <main className="flex-1 ml-0 md:ml-20 pb-20 md:pb-0">
+            <main className="flex-1 ml-0 md:ml-20 pb-20 md:pb-0 flex flex-col items-center">
               {children}
             </main>
           </div>
